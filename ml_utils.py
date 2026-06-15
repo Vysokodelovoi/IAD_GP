@@ -20,7 +20,7 @@ def save_results(df):
     df.to_parquet(RESULTS_FILE, index=False)
 
 
-def run_experiment(pipeline, method_name, param_dict=None):
+def run_experiment(pipeline, method_name, df_name, param_dict=None):
     """
     Запускает эксперимент и логирует результат.
     """
@@ -30,7 +30,7 @@ def run_experiment(pipeline, method_name, param_dict=None):
     start_time = time.time()
     timestamp = datetime.now().isoformat()
 
-    df = pd.read_parquet('main_df_edited.parquet')
+    df = pd.read_parquet(df_name)
     X = df.drop(columns=['reservation_status', 'reservation_status_date', 'is_canceled', 'country_full']).copy()
     y = df['is_canceled']
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.33, random_state=22)
