@@ -1,5 +1,8 @@
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.pipeline import Pipeline
+from sklearn.compose import ColumnTransformer
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
+from sklearn.impute import KNNImputer
 import pandas as pd
 import numpy as np
 
@@ -8,14 +11,16 @@ class FeatureEngineer(BaseEstimator, TransformerMixin):
 
     def __init__(self, country_threshold=0.01):
         self.country_threshold = country_threshold
+        
 
     def fit(self, X, y=None):
         country_freq = X['country'].value_counts(normalize=True)
-
+        self.feature_names_in_ = X.columns
         self.top_countries_ = set(
             country_freq[country_freq >= self.country_threshold].index
         )
-
+        X_out = self.transform(X.head(1))
+        self.feature_names_out_ = X_out.columns.to_numpy()
         return self
 
     def transform(self, X):
@@ -70,13 +75,51 @@ class FeatureEngineer(BaseEstimator, TransformerMixin):
             ],
             errors='ignore'
         )
-
         return X
     
-impute_pipieline = Pipeline([]) # Not implemented
 
-default_data_preparation_pipeline = Pipeline(
-    [('Impute part', 'pipelines'), # change to impute, when implemented
+    def get_feature_names_out(self, input_features=None):
+        return self.feature_names_out_
+    
+
+num_features = [
+    'lead_time', 'arrival_date_year', 'arrival_date_week_number',
+    'arrival_date_day_of_month', 'stays_in_weekend_nights',
+    'stays_in_week_nights', 'adults', 'children', 'babies',
+    'is_repeated_guest', 'previous_cancellations',
+    'previous_bookings_not_canceled', 'booking_changes',
+    'days_in_waiting_list', 'required_car_parking_spaces',
+    'total_of_special_requests'
+]
+# After FE
+num_features += [
+    'total_nights',
+    'is_weekend_stay',
+    'total_guests',
+    'has_children',
+    'booking_intensity',
+    'has_agent',
+    'has_company'
+]
+
+cat_features = [
+    'hotel', 'arrival_date_month', 'meal', 
+    'market_segment', 'distribution_channel', 'reserved_room_type', 'deposit_type', 'customer_type'
+]
+# After FE
+cat_features += ['country_group']
+
+encoding_and_impute = ColumnTransformer(
+    [
+        ('categorial_oh', OneHotEncoder(handle_unknown='ignore'), cat_features),
+        ('numeric', 
+            Pipeline([
+                ('cat_impute', KNNImputer()),
+                ('scaler', StandardScaler())
+                ]), num_features)
+    ]
+)
+default_data_preparation_pipeline = Pipeline([
     ('Feature Engineering', FeatureEngineer()),
-    ('feature encoding', 'passthrough')] # change to encoding when implemented
+    ('feature encoding', encoding_and_impute)] 
 )
